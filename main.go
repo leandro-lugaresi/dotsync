@@ -1,7 +1,7 @@
 package main
 
-import "github.com/leandro-lugaresi/dotsync/commands"
+import "github.com/markbates/tt/cmd"
 
 func main() {
-	commands.Execute()
+	cmd.Execute()
 }
