@@ -9,12 +9,54 @@ import (
 
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/config"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
 type gitRepository struct {
 	output io.Writer
 	repo   *git.Repository
+}
+
+func (g *gitRepository) commit() (plumbing.Hash, error) {
+	w, err := g.repo.Worktree()
+	if err != nil {
+		return plumbing.ZeroHash, err
+	}
+	s, err := w.Status()
+	if err != nil {
+		return plumbing.ZeroHash, err
+	}
+
+	if !s.IsClean() {
+		for path, status := range s {
+			switch status.Worktree {
+			case git.Unmodified:
+				continue
+			case git.Added, git.Modified, git.Renamed, git.Copied, git.Untracked:
+				_, err = w.Add(path)
+				if err != nil {
+					return plumbing.ZeroHash, err
+				}
+			case git.Deleted:
+				_, err = w.Remove(path)
+				if err != nil {
+					return plumbing.ZeroHash, err
+				}
+			case git.UpdatedButUnmerged:
+				continue //?
+			}
+		}
+	}
+
+	hash, err := w.Commit("TODO MSG", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Dotsync Daemon",
+			Email: "leandrolugaresi92@gmail.com",
+			When:  time.Now(),
+		},
+	})
+	return hash, err
 }
 
 func (g *gitRepository) push() error {
@@ -31,54 +73,6 @@ func (g *gitRepository) pull() error {
 		Progress:          g.output,
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 	})
-}
-
-func (g *gitRepository) commit() error {
-	w, err := g.repo.Worktree()
-	if err != nil {
-		return err
-	}
-	s, err := w.Status()
-	if err != nil {
-		return err
-	}
-
-	if !s.IsClean() {
-		for path, status := range s {
-			switch status.Worktree {
-			case git.Unmodified:
-				continue
-			case git.Added, git.Modified:
-				_, err = w.Add(path)
-				if err != nil {
-					return err
-				}
-			case git.Deleted:
-				_, err = w.Remove(path)
-				if err != nil {
-					return err
-				}
-			case git.Renamed:
-			case git.Copied:
-			case git.Untracked:
-			case git.UpdatedButUnmerged:
-			}
-
-			if err != nil {
-				return err
-			}
-		}
-
-	}
-
-	_, err = w.Commit("TODO MSG", &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "Dotsync Daemon",
-			Email: "leandrolugaresi92@gmail.com",
-			When:  time.Now(),
-		},
-	})
-	return err
 }
 
 func initNewRepository(path, name string, output io.Writer) (*gitRepository, error) {

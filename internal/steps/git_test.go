@@ -7,7 +7,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/config"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 )
+
+const initialCommit string = "02c39d8f899fa1fe19f0a2bf7d983ccf88314840"
 
 func Test_gitInitAndOpen(t *testing.T) {
 	p := path()
@@ -22,7 +27,7 @@ func Test_gitInitAndOpen(t *testing.T) {
 	assert.Equal(t, "git@gitlab.com:leandro-lugaresi/git-tests.git", remote.Config().URL)
 }
 
-func Test_gitSimpleWorkflow(t *testing.T) {
+func Test_gitPushAndPull(t *testing.T) {
 	p1 := path()
 	p2 := path()
 
@@ -30,21 +35,29 @@ func Test_gitSimpleWorkflow(t *testing.T) {
 	CheckIfError(t, "Failed to clone the repository", err)
 	_, err = ioutil.ReadDir(filepath.Join(p1, ".git"))
 	CheckIfError(t, "Failed to create a .git directory", err)
+	remote, err := r1.repo.Remote("origin")
+	CheckIfError(t, "Failed to get the remote origin", err)
+	assert.Equal(t, "git@gitlab.com:leandro-lugaresi/git-tests.git", remote.Config().URL)
 
-	_, err = cloneRepository(p2, "gitlab.com/leandro-lugaresi/git-tests", ioutil.Discard)
+	r2, err := cloneRepository(p2, "gitlab.com/leandro-lugaresi/git-tests", ioutil.Discard)
 	CheckIfError(t, "Failed to clone the repository", err)
 	_, err = ioutil.ReadDir(filepath.Join(p2, ".git"))
 	CheckIfError(t, "Failed to create a .git directory", err)
 
 	err = ioutil.WriteFile(filepath.Join(p1, "testFoo.log"), []byte("hello world!"), 0644)
 	CheckIfError(t, "Failed to create the test file", err)
-	err = r1.add("testFoo.log")
+	hash, err := r1.commit()
 	CheckIfError(t, "Failed to commit files", err)
+	err = r1.push()
+	CheckIfError(t, "Failed to push files", err)
 
-	remote, err := r1.repo.Remote("origin")
-	CheckIfError(t, "Failed to get the remote origin", err)
-	assert.Equal(t, "git@gitlab.com:leandro-lugaresi/git-tests.git", remote.Config().URL)
-
+	err = r2.pull()
+	CheckIfError(t, "Failed to push files", err)
+	ref, err := r2.repo.Head()
+	CheckIfError(t, "Failed to get the reference for repository", err)
+	assert.Equal(t, hash, ref.Hash())
+	err = forceReset(r2)
+	CheckIfError(t, "Failed to reset the repository", err)
 }
 
 func Test_parseRepositoryName(t *testing.T) {
@@ -89,4 +102,25 @@ func CheckIfError(t *testing.T, fail string, err error) {
 	if err != nil {
 		t.Fatal(fail, " - error: ", err)
 	}
+}
+
+func forceReset(g *gitRepository) error {
+	h := plumbing.NewHash(initialCommit)
+	tree, err := g.repo.Worktree()
+	if err != nil {
+		return err
+	}
+	err = tree.Reset(&git.ResetOptions{
+		Commit: h,
+		Mode:   git.HardReset,
+	})
+	if err != nil {
+		return err
+	}
+	err = g.repo.Push(&git.PushOptions{
+		RefSpecs: []config.RefSpec{
+			config.RefSpec("+refs/heads/master:refs/heads/master"),
+		},
+	})
+	return err
 }
