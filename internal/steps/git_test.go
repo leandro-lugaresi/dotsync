@@ -12,22 +12,39 @@ import (
 func Test_gitInitAndOpen(t *testing.T) {
 	p := path()
 	_, err := initNewRepository(p, "gitlab.com/leandro-lugaresi/git-tests", ioutil.Discard)
-	if err != nil {
-		t.Error(err)
-	}
+	CheckIfError(t, "Failed To init the repository", err)
 	_, err = ioutil.ReadDir(filepath.Join(p, ".git"))
-	if err != nil {
-		t.Error(err)
-	}
+	CheckIfError(t, "Failed to create the directory for .git", err)
 	g, err := openRepository(p, ioutil.Discard)
-	if err != nil {
-		t.Error(err)
-	}
+	CheckIfError(t, "Failed to open the repository", err)
 	remote, err := g.repo.Remote("origin")
-	if err != nil {
-		t.Error(err)
-	}
+	CheckIfError(t, "Failed to get the remote origin", err)
 	assert.Equal(t, "git@gitlab.com:leandro-lugaresi/git-tests.git", remote.Config().URL)
+}
+
+func Test_gitSimpleWorkflow(t *testing.T) {
+	p1 := path()
+	p2 := path()
+
+	r1, err := cloneRepository(p1, "gitlab.com/leandro-lugaresi/git-tests", ioutil.Discard)
+	CheckIfError(t, "Failed to clone the repository", err)
+	_, err = ioutil.ReadDir(filepath.Join(p1, ".git"))
+	CheckIfError(t, "Failed to create a .git directory", err)
+
+	_, err = cloneRepository(p2, "gitlab.com/leandro-lugaresi/git-tests", ioutil.Discard)
+	CheckIfError(t, "Failed to clone the repository", err)
+	_, err = ioutil.ReadDir(filepath.Join(p2, ".git"))
+	CheckIfError(t, "Failed to create a .git directory", err)
+
+	err = ioutil.WriteFile(filepath.Join(p1, "testFoo.log"), []byte("hello world!"), 0644)
+	CheckIfError(t, "Failed to create the test file", err)
+	err = r1.add("testFoo.log")
+	CheckIfError(t, "Failed to commit files", err)
+
+	remote, err := r1.repo.Remote("origin")
+	CheckIfError(t, "Failed to get the remote origin", err)
+	assert.Equal(t, "git@gitlab.com:leandro-lugaresi/git-tests.git", remote.Config().URL)
+
 }
 
 func Test_parseRepositoryName(t *testing.T) {
@@ -66,4 +83,10 @@ func path() string {
 		panic(err.Error())
 	}
 	return dir
+}
+
+func CheckIfError(t *testing.T, fail string, err error) {
+	if err != nil {
+		t.Fatal(fail, " - error: ", err)
+	}
 }
