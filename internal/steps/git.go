@@ -13,6 +13,15 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
+type repository interface {
+	init() error
+	clone() error
+	commit() ([20]byte, error)
+	push() error
+	pull() error
+	resetHard() error
+}
+
 type gitRepository struct {
 	output io.Writer
 	repo   *git.Repository
@@ -49,7 +58,7 @@ func (g *gitRepository) commit() (plumbing.Hash, error) {
 		}
 	}
 
-	hash, err := w.Commit("TODO MSG", &git.CommitOptions{
+	hash, err := w.Commit("Automatic commit for:\n\n"+s.String(), &git.CommitOptions{
 		Author: &object.Signature{
 			Name:  "Dotsync Daemon",
 			Email: "leandrolugaresi92@gmail.com",
