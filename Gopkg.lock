@@ -44,12 +44,6 @@
   revision = "cc8532a8e9a55ea36402aa21efdf403a60d34096"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/mitchellh/multistep"
-  packages = ["."]
-  revision = "391576a156a54cfbb4cf5d5eda40cf6ffa3e3a4d"
-
-[[projects]]
   name = "github.com/pelletier/go-buffruneio"
   packages = ["."]
   revision = "c37440a7cf42ac63b919c752ca73a85067e05992"
@@ -178,6 +172,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fce8b0354f7924c4535ecf59e97f3b7912219d21700f2b3026b43db06d36e725"
+  inputs-digest = "cdec0377e7642bdc5de82146b512654f8b43807f43c07e3bde1c7398f7912e8a"
   solver-name = "gps-cdcl"
   solver-version = 1
