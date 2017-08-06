@@ -1,6 +1,7 @@
 package vcs
 
 import (
+	"flag"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,8 +12,11 @@ import (
 
 const initialCommit string = "02c39d8f899fa1fe19f0a2bf7d983ccf88314840"
 
+var integration = flag.Bool("integration", false, "Run integration tests")
+
 func Test_NewGitRepository(t *testing.T) {
 	p := createTempDir(t)
+	defer os.Remove(p)
 	t.Run("ShouldCloneRepository", func(t *testing.T) {
 		_, err := NewGitRepository(p, "gitlab.com/leandro-lugaresi/git-tests", ioutil.Discard)
 		check(t, "Failed To init the repository", err)
@@ -30,8 +34,13 @@ func Test_NewGitRepository(t *testing.T) {
 }
 
 func Test_gitPushAndPull(t *testing.T) {
+	if !*integration {
+		t.Skip("Skip integration test")
+	}
 	p1 := createTempDir(t)
 	p2 := createTempDir(t)
+	defer os.Remove(p1)
+	defer os.Remove(p2)
 	var hash [20]byte
 
 	r1, err := NewGitRepository(p1, "gitlab.com/leandro-lugaresi/git-tests", ioutil.Discard)

@@ -20,7 +20,7 @@ test:
 .PHONY: test
 
 test-ci: linters-ci
-	GORACE="halt_on_error=1" go test -race -v $(PACKAGES)
+	GORACE="halt_on_error=1" go test -integration -race -v $(PACKAGES)
 .PHONY: test-ci
 
 test-color:

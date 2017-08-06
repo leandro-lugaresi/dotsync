@@ -8,17 +8,22 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/src-d/go-billy.v3"
+	"gopkg.in/src-d/go-billy.v3/memfs"
 	"gopkg.in/src-d/go-billy.v3/osfs"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
+	"gopkg.in/src-d/go-git.v4/storage/filesystem"
 )
 
 type gitRepository struct {
-	output io.Writer
-	path   string
-	repo   *git.Repository
+	output     io.Writer
+	path       string
+	repo       *git.Repository
+	wt         billy.Filesystem
+	dotStorage *filesystem.Storage
 }
 
 func (g *gitRepository) Clone(name string) error {
@@ -26,7 +31,7 @@ func (g *gitRepository) Clone(name string) error {
 	if err != nil {
 		return err
 	}
-	g.repo, err = git.PlainClone(g.path, false, &git.CloneOptions{
+	g.repo, err = git.Clone(g.dotStorage, g.wt, &git.CloneOptions{
 		URL:               url,
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 		Progress:          g.output,
@@ -79,6 +84,12 @@ func (g *gitRepository) Push() error {
 	return g.repo.Push(&git.PushOptions{})
 }
 
+func (g *gitRepository) Open() error {
+	var err error
+	g.repo, err = git.Open(g.dotStorage, g.wt)
+	return err
+}
+
 func (g *gitRepository) Pull() error {
 	tree, err := g.repo.Worktree()
 	if err != nil {
@@ -117,18 +128,42 @@ func (g *gitRepository) ForceReset() error {
 // init,clone, commit, push and pull from git repositories.
 func NewGitRepository(path, name string, output io.Writer) (*gitRepository, error) {
 	fs := osfs.New(path)
-	_, err := fs.Stat(".git")
-
+	dot, err := fs.Chroot(".git")
+	s, err := filesystem.NewStorage(dot)
+	if err != nil {
+		return nil, err
+	}
 	g := &gitRepository{
-		output: output,
-		path:   path,
+		output:     output,
+		path:       path,
+		wt:         fs,
+		dotStorage: s,
 	}
 
+	_, err = fs.Stat(".git")
 	if os.IsNotExist(err) {
 		err = g.Clone(name)
 	} else {
-		g.repo, err = git.PlainOpen(path)
+		err = g.Open()
 	}
+	return g, err
+}
+
+func NewMemoryGitRepository(name string, output io.Writer) (*gitRepository, error) {
+	fs := memfs.New()
+	dot, err := fs.Chroot(".git")
+	s, err := filesystem.NewStorage(dot)
+	if err != nil {
+		return nil, err
+	}
+	g := &gitRepository{
+		output:     output,
+		wt:         fs,
+		dotStorage: s,
+	}
+
+	err = g.Clone(name)
+
 	return g, err
 }
 
