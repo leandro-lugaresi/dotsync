@@ -1,54 +1,37 @@
 package steps
 
-// import (
-// 	"fmt"
-// 	"log"
-// 	"os"
-// 	"os/exec"
+import (
+	"os"
+	"time"
 
-// 	"github.com/mitchellh/multistep"
-// )
+	"github.com/briandowns/spinner"
+	"github.com/leandro-lugaresi/dotsync/internal/vcs"
+	"github.com/mitchellh/colorstring"
+	"github.com/mitchellh/multistep"
+)
 
-// type StepCloneRepo struct{}
+type StepCloneRepo struct{}
 
-// func (*StepCloneRepo) Run(state multistep.StateBag) multistep.StepAction {
-// 	repo := state.Get("repo").(string)
-// 	path := state.Get("path").(string)
+func (*StepCloneRepo) Run(state multistep.StateBag) multistep.StepAction {
+	repo := state.Get("repo").(string)
+	path := state.Get("path").(string)
+	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
+	colorstring.Println("[white]=> Cloning repository: ", repo)
+	s.Start()
 
-// 	log.Println("Cloning repository: ", repo)
+	r, err := vcs.NewGitRepository(path, repo, os.Stdout)
+	if err != nil {
+		s.Stop()
+		colorstring.Printf("[red]=> Error cloning the repository %s \n [white]error: %s", repo, err)
+		state.Put("repo_result", "error")
+		return multistep.ActionHalt
+	}
 
-// 	// Make the repository directory
-// 	mkdirerr := os.MkdirAll(path, 0777)
+	// Print a success dot
+	s.Stop()
+	colorstring.Print("[green]=> Clone successfully!")
+	state.Put("repo_result", "clone")
+	return multistep.ActionContinue
+}
 
-// 	// If an error occurs, log and halt
-// 	if mkdirerr != nil {
-// 		log.Println("Error creating directory for " + repo.FullName)
-// 		fmt.Printf("%s.%s", RED, CLEAR)
-// 		state.Put("repo_result", "error")
-// 		return multistep.ActionHalt
-// 	}
-
-// 	// Clone into the current directory
-// 	cmd := exec.Command("git", "clone", repo.SSHUrl, ".")
-
-// 	// Set the current directory as the path to the repository
-// 	cmd.Dir = repoPath
-
-// 	// Execute the clone
-// 	cloneerr := cmd.Run()
-
-// 	// If an error occurs, log and halt
-// 	if cloneerr != nil {
-// 		log.Println("Error cloning " + repo.FullName)
-// 		fmt.Printf("%s.%s", RED, CLEAR)
-// 		state.Put("repo_result", "error")
-// 		return multistep.ActionHalt
-// 	}
-
-// 	// Print a success dot
-// 	fmt.Printf("%s.%s", GREEN, CLEAR)
-// 	state.Put("repo_result", "clone")A
-// 	return multistep.ActionContinue
-// }
-
-// func (*StepCloneRepo) Cleanup(multistep.StateBag) {}
+func (*StepCloneRepo) Cleanup(multistep.StateBag) {}
