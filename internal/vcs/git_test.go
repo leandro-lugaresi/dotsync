@@ -64,7 +64,7 @@ func Test_gitPushAndPull(t *testing.T) {
 		assert.EqualValues(t, hash, ref.Hash())
 	})
 
-	err = r2.ForceReset()
+	err = r2.ForceReset(initialCommit)
 	check(t, "Failed to reset the repository", err)
 }
 

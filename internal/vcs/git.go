@@ -103,8 +103,8 @@ func (g *gitRepository) Pull() error {
 }
 
 // ForceReset is only used by tests to reset the test repository to the initial commit.
-func (g *gitRepository) ForceReset() error {
-	h := plumbing.NewHash(initialCommit)
+func (g *gitRepository) ForceReset(hash string) error {
+	h := plumbing.NewHash(hash)
 	tree, err := g.repo.Worktree()
 	if err != nil {
 		return err
